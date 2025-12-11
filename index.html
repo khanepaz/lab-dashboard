@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" style="font-family: 'Vazirmatn', sans-serif;">
+<head>
+<meta charset="UTF-8">
+<title>داشبورد آزمایشگاه - آنالیز تعاملی</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+<!-- Chart.js (برای تب‌های اصلی) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
+
+<!-- Excel + PDF -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+<!-- jQuery (اولین) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+<!-- jQuery UI (برای PivotTable.js drag & drop) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/base/jquery-ui.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
+
+<!-- Plotly (قبل از plotly_renderers) -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<!-- PivotTable.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.fa.min.js"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/plotly_renderers.min.js"></script>
+
+<style>
+    /* استایل‌های قبلی بدون تغییر - برای کوتاه شدن اینجا حذف کردم ولی همشون رو کپی کن */
+    :root { --primary: #4f46e5; --danger: #dc2626; --warning: #f59e0b; --success: #10b981; --dark: #1e293b; --light: #f8fafc; --gray: #64748b; --border: #e2e8f0; }
+    body { font-family: 'Vazirmatn', Tahoma, sans-serif; background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%); min-height: 100vh; color: #1e293b; }
+    .card { border: none; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); transition: all 0.3s ease; overflow: hidden; background: white; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+    h1.display-5 { font-weight: 800; background: linear-gradient(90deg, var(--primary), #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .drop-zone { border: 3px dashed var(--primary); border-radius: 24px; background: rgba(79, 70, 229, 0.05); padding: 60px 20px; text-align: center; cursor: pointer; transition: all 0.4s ease; max-width: 680px; margin: 0 auto; }
+    .drop-zone:hover { background: rgba(79, 70, 229, 0.12); border-color: #3730a3; transform: scale(1.02); }
+    .drop-zone i { font-size: 4.5rem; color: var(--primary); }
+    .nav-tabs { border: none; gap: 10px; padding: 0 20px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+    .nav-tabs .nav-link { border: none; border-radius: 16px; padding: 12px 24px; font-weight: 600; color: var(--gray); background: #f1f5f9; transition: all 0.3s ease; }
+    .nav-tabs .nav-link.active { background: linear-gradient(135deg, var(--primary), #7c3aed); color: white !important; box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3); }
+    .chart-container { position: relative; height: 300px; margin: 10px 0; }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), #7c3aed); border: none; box-shadow: 0 6px 15px rgba(79, 70, 229, 0.3); border-radius: 14px; font-weight: 600; padding: 10px 24px; }
+    /* استایل اختصاصی برای Pivot - رسپانسیو و زیبا */
+.pivot-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px;
+  border-radius: 16px;
+  background: #f8f9ff;
+  box-shadow: inset 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.pivot-container table.pvtTable {
+  font-size: 0.9rem !important;
+  white-space: nowrap;
+}
+
+#pivot-output .pvtUi {
+  color: #1e293b;
+  font-family: 'Vazirmatn', sans-serif !important;
+}
+
+/* فارسی کردن عنوان بخش‌ها */
+#pivot-output .pvtAxisContainer.pvtRows .pvtAxisLabel::before {
+  content: "ردیف‌ها:";
+  font-weight: bold;
+}
+#pivot-output .pvtAxisContainer.pvtCols .pvtAxisLabel::before {
+  content: "ستون‌ها:";
+  font-weight: bold;
+}
+#pivot-output .pvtVals .pvtAxisLabel::before {
+  content: "مقادیر:";
+  font-weight: bold;
+}
+#pivot-output .pvtFilterBox .pvtAxisLabel::before {
+  content: "فیلترها:";
+  font-weight: bold;
+}
+
+/* مخفی کردن عنوان انگلیسی اصلی */
+#pivot-output .pvtAxisLabel {
+  visibility: hidden;
+  position: relative;
+}
+#pivot-output .pvtAxisLabel::before {
+  visibility: visible;
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--primary);
+}
+
+/* رسپانسیو: روی صفحه کوچک، بخش‌ها عمودی بشن */
+@media (max-width: 992px) {
+  #pivot-output .pvtUi td.pvtVals {
+    width: 100% !important;
+    display: block;
+  }
+  #pivot-output .pvtUi {
+    display: block !important;
+  }
+  #pivot-output .pvtUi .pvtRendererArea {
+    margin-top: 20px;
+  }
+}
+
+/* خوشگل کردن PivotTable.js کاملاً */
+.pivot-container {
+  overflow: auto;
+  padding: 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+#pivot-output .pvtUi {
+  color: #1e293b;
+  font-family: 'Vazirmatn', sans-serif;
+  background: transparent;
+}
+
+#pivot-output .pvtAxisContainer, #pivot-output .pvtVals {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+#pivot-output .pvtAttr {
+  background: white !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  margin: 4px;
+  padding: 8px 12px !important;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+#pivot-output .pvtAttr:hover {
+  background: #e0e7ff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79,70,229,0.2);
+}
+
+#pivot-output .pvtTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  font-size: 0.95rem;
+}
+
+#pivot-output .pvtTable thead tr th {
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: white;
+  font-weight: 700;
+  text-align: center;
+  padding: 12px;
+}
+
+#pivot-output .pvtTable tbody tr:hover {
+  background: #eef2ff !important;
+}
+
+#pivot-output .pvtTable td, #pivot-output .pvtTable th {
+  border: 1px solid var(--border);
+  padding: 10px;
+}
+
+/* Plotly charts خوشگل‌تر */
+#pivot-output .plotly-graph-div {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+/* رسپانسیو بهتر روی موبایل */
+@media (max-width: 992px) {
+  #pivot-output .pvtUi {
+    display: block !important;
+  }
+  #pivot-output .pvtVals {
+    width: 100% !important;
+    margin-top: 15px;
+  }
+  #pivot-output .pvtRendererArea {
+    margin-top: 20px;
+  }
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="container-fluid py-4">
+  <div class="text-center my-5">
+    <h1 class="display-5 fw-bold mb-4">داشبورد آزمایشگاه </h1>
+    <div id="dropZone" class="drop-zone mx-auto" style="max-width:750px;">
+      <i class="bi bi-file-earmark-excel-fill display-1 text-primary"></i>
+      <h3 class="mt-4 fw-bold">فایل اکسل را بکشید یا کلیک کنید</h3>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs justify-content-center mb-5 fs-5" id="tabs"></ul>
+  <div class="tab-content" id="tabContent"></div>
+</div>
+
+<script>
+let rawData = [];
+
+// Drag & Drop و handleFile (بدون تغییر)
+document.getElementById('dropZone').onclick = () => {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.xlsx,.xls';
+  input.onchange = e => handleFile(e.target.files[0]);
+  input.click();
+};
+document.getElementById('dropZone').ondragover = e => e.preventDefault();
+document.getElementById('dropZone').ondrop = e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); };
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, {type: 'array'});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    rawData = json.map(r => {
+      const dateStr = String(r['تاریخ'] || '').trim();
+      let year = '', month = '', day = '';
+      if (dateStr.length === 8 && /^\d+$/.test(dateStr)) {
+        year = dateStr.substring(0,4);
+        month = dateStr.substring(4,6);
+        day = dateStr.substring(6,8);
+      }
+      return {
+        تاریخ: dateStr, سال: year, ماه: month, روز: day,
+        کویل: String(r['شماره کویل'] || ''),
+        ضخامت: parseFloat(r['ضخامت']) || 0,
+        عرض: parseFloat(r['عرض']) || 0,
+        وزن: parseFloat(r['وزن']) || 0,
+        ys: parseFloat(r['ys'] || r['YS']) || 0,
+        uts: parseFloat(r['uts'] || r['UTS']) || 0,
+        el: parseFloat(r['El'] || r['EL'] || r['کشیدگی']) || 0,
+        گرید: String(r['گرید'] || ''),
+        نوع: String(r['نوع محصول'] || ''),
+        برند: String(r['برند هات رول'] || r['برند'] || 'نامشخص').trim()
+      };
+    }).filter(r => r.نوع && r.وزن > 0 && r.ys > 0 && r.uts > 0 && r.el > 0);
+
+    buildDashboard();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function getPointCategory(r) {
+  const ys = r.ys; const uts = r.uts; const ratio = uts > 0 ? ys / uts : 1;
+  if (ys > 380 || ratio >= 0.88) return { color: '#991b1b', name: 'خطرناک / شکننده' };
+  if (ys >= 300 || uts >= 500) return { color: '#f97316', name: 'استحکام بالا' };
+  if (ys <= 280 && ratio <= 0.75) return { color: '#22c55e', name: 'شکل‌پذیری خوب' };
+  if (ys <= 220 && ratio <= 0.65) return { color: '#166534', name: 'شکل‌پذیری عالی' };
+  return { color: '#64748b', name: 'نامشخص' };
+}
+
+function buildDashboard() {
+  const types = ['روغنی', 'گالوانیزه', 'گالوالوم'];
+  const tabs = document.getElementById('tabs');
+  const content = document.getElementById('tabContent');
+  tabs.innerHTML = ''; content.innerHTML = '';
+  let hasAnyData = false;
+
+  types.forEach((type, i) => {
+    const data = rawData.filter(r => r.نوع === type);
+    if (data.length === 0) return;
+    hasAnyData = true;
+    const totalTon = (data.reduce((a,b) => a + b.وزن, 0) / 1000).toFixed(1);
+
+    tabs.innerHTML += `<li class="nav-item"><a class="nav-link ${i === 0 ? 'active' : ''}" data-bs-toggle="tab" href="#tab-pane-${i}">${type} <span class="badge bg-light text-dark">${data.length} کویل • ${totalTon} تن</span></a></li>`;
+    content.innerHTML += `<div class="tab-pane fade ${i === 0 ? 'show active' : ''}" id="tab-pane-${i}"><div class="row g-4" id="content-${i}"></div></div>`;
+
+    setTimeout(() => renderTabContent(data, i, totalTon), 150);
+  });
+
+  // تب Pivot
+   // تب آنالیز تعاملی (Pivot) - نسخه بهبودیافته و فارسی
+   tabs.innerHTML += `
+    <li class="nav-item">
+      <a class="nav-link ${!hasAnyData ? 'active' : ''}" data-bs-toggle="tab" href="#tab-pivot">
+        آنالیز تعاملی (Pivot)
+      </a>
+    </li>`;
+
+  content.innerHTML += `
+    <div class="tab-pane fade ${!hasAnyData ? 'show active' : ''}" id="tab-pivot">
+      <div class="container py-4">
+        <div class="card">
+          <div class="card-body">
+            <h4 class="text-center mb-3 fw-bold text-primary">آنالیز تعاملی داده‌ها (مانند Pivot Table در اکسل)</h4>
+            <div class="alert alert-info text-center mb-4" style="border-radius: 16px; background: rgba(79,70,229,0.08); border: none;">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              فیلدهای سمت چپ را به بخش‌های زیر بکشید:
+              <strong>ردیف‌ها</strong> (برای گروه‌بندی عمودی)، 
+              <strong>ستون‌ها</strong> (برای گروه‌بندی افقی)، 
+              <strong>مقادیر</strong> (مثل مجموع، میانگین، تعداد) و 
+              <strong>فیلترها</strong> (برای محدود کردن داده‌ها)
+            </div>
+            <div class="pivot-container">
+              <div id="pivot-output"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  setTimeout(renderPivotTable, 800);
+}
+
+// تمام توابع چارت‌های اصلی (createMainTabCharts, renderTabContent, setupPagination) رو از کد اولیه‌ت کپی کن
+// اینجا کامل گذاشتم (کپی از کد اصلی‌ت)
+
+// تب‌های اصلی (دست‌نخورده)
+function renderTabContent(data, idx, totalTon) {
+  document.getElementById(`content-${idx}`).innerHTML = `
+    <div class="row g-4">
+      <!-- 1. میانگین خواص مکانیکی -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="text-center mb-4 fw-bold">میانگین خواص مکانیکی</h5>
+            <div class="chart-container"><canvas id="avg${idx}"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. توزیع گریدها -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="text-center mb-4 fw-bold">توزیع گریدها</h5>
+            <div class="chart-container"><canvas id="grades${idx}"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. YS در مقابل UTS -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="text-center mb-4 fw-bold">YS در مقابل UTS</h5>
+            <div class="chart-container"><canvas id="scatter${idx}"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. هیستوگرام YS -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="text-center mb-4 fw-bold">توزیع YS</h5>
+            <div class="chart-container"><canvas id="histYS${idx}"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. هیستوگرام UTS -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="text-center mb-4 fw-bold">توزیع UTS</h5>
+            <div class="chart-container"><canvas id="histUTS${idx}"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. هیستوگرام EL -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="text-center mb-4 fw-bold">توزیع EL (%)</h5>
+            <div class="chart-container"><canvas id="histEL${idx}"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- جدول جزئیات کویل‌ها (اختیاری — اگر نمی‌خوای هم حذفش کن) -->
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="text-center mb-4">جزئیات کویل‌ها (${data.length} رکورد) — ${totalTon} تن</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover text-center">
+                <thead class="table-dark">
+                  <tr><th>تاریخ</th><th>کویل</th><th>ضخامت</th><th>عرض</th><th>وزن</th><th>YS</th><th>UTS</th><th>EL</th><th>گرید</th><th>برند</th></tr>
+                </thead>
+                <tbody id="tbody${idx}"></tbody>
+              </table>
+            </div>
+            <nav><ul class="pagination justify-content-center mt-3" id="pagination${idx}"></ul></nav>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // ساخت چارت‌ها بعد از رندر DOM
+  setTimeout(() => {
+    createMainTabCharts(data, idx);
+    setupPagination(data, idx);
+  }, 200);
+}
+
+
+
+function createMainTabCharts(data, i) {
+  const avg = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+
+  // 1. میانگین خواص مکانیکی
+  new Chart(document.getElementById(`avg${i}`), {
+    type: 'bar',
+    data: {
+      labels: ['YS', 'UTS', 'EL (%)'],
+      datasets: [{
+        data: [avg(data.map(r=>r.ys)), avg(data.map(r=>r.uts)), avg(data.map(r=>r.el))],
+        backgroundColor: ['#4f46e5', '#dc2626', '#f59e0b'],
+        borderColor: ['#3730a3', '#991b1b', '#d97706'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'مقدار (MPa / %)' } } }
+    }
+  });
+
+  // 2. توزیع گریدها بر اساس تناژ
+  const grades = {};
+  data.forEach(r => {
+    const ton = r.وزن / 1000;
+    grades[r.گرید] = (grades[r.گرید] || 0) + ton;
+  });
+  const sortedGrades = Object.entries(grades)
+    .sort((a,b) => b[1] - a[1])
+    .map(([grade, ton]) => ({ grade, ton: Number(ton.toFixed(2)) }));
+
+  new Chart(document.getElementById(`grades${i}`), {
+    type: 'bar',
+    data: {
+      labels: sortedGrades.map(x => x.grade),
+      datasets: [{
+        data: sortedGrades.map(x => x.ton),
+        backgroundColor: '#4f46e5',
+        borderColor: '#3730a3',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end', align: 'top', color: '#1e293b', font: { weight: 'bold', size: 14 },
+          formatter: v => v.toFixed(1)
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: 'تناژ (تن)' } }
+      }
+    }
+  });
+
+  // 3. نمودار پراکندگی YS در مقابل UTS با رنگ‌بندی هوشمند
+  const scatterData = data.map(r => {
+    const cat = getPointCategory(r);
+    return {
+      x: r.ys,
+      y: r.uts,
+      category: cat.name,
+      backgroundColor: cat.color + 'dd',
+      borderColor: cat.color,
+      borderWidth: 2,
+      radius: 6
+    };
+  });
+
+  new Chart(document.getElementById(`scatter${i}`), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'کویل‌ها',
+        data: scatterData,
+        pointBackgroundColor: scatterData.map(p => p.backgroundColor),
+        pointBorderColor: scatterData.map(p => p.borderColor),
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 10
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const p = context.raw;
+              const ratio = p.y > 0 ? (p.x / p.y).toFixed(3) : '—';
+              return `${p.category} | YS: ${p.x} MPa | UTS: ${p.y} MPa | نسبت: ${ratio}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'YS (تنش تسلیم - MPa)', font: { weight: 'bold' } } },
+        y: { title: { display: true, text: 'UTS (تنش نهایی - MPa)', font: { weight: 'bold' } } }
+      }
+    }
+  });
+
+  // 4-6. هیستوگرام‌ها (بدون تغییر)
+  const makeHist = (prop, bins, canvasId, color = '#4f46e5', border = '#3730a3') => {
+    const h = new Array(bins.length-1).fill(0);
+    data.forEach(r => {
+      const val = r[prop];
+      for (let j = 0; j < bins.length-1; j++) {
+        if (val >= bins[j] && val < bins[j+1]) { h[j]++; break; }
+      }
+    });
+    const labels = bins.slice(0,-1).map((b,k) => `${b}–${bins[k+1]}`);
+
+    new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: { labels, datasets: [{ data: h, backgroundColor: color, borderColor: border, borderWidth: 2 }] },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'تعداد کویل' } } }
+      }
+    });
+  };
+
+  makeHist('ys',  [0,200,240,280,320,400], `histYS${i}`, '#4f46e5', '#3730a3');
+  makeHist('uts', [250,320,380,440,500,600], `histUTS${i}`, '#dc2626', '#991b1b');
+  makeHist('el',  [0,15,20,25,30,40],       `histEL${i}`, '#f59e0b', '#d97706');
+}
+
+function setupPagination(data, idx) {
+  const perPage = 10;
+  const tbody = document.getElementById(`tbody${idx}`);
+  const pagination = document.getElementById(`pagination${idx}`);
+  const pages = Math.ceil(data.length / perPage);
+  let currentPage = 1;
+
+  const renderPage = (page) => {
+    currentPage = page;
+    tbody.innerHTML = '';
+    const start = (page - 1) * perPage;
+    data.slice(start, start + perPage).forEach(r => {
+      tbody.innerHTML += `<tr>
+        <td>${r.تاریخ}</td><td>${r.کویل}</td><td>${r.ضخامت}</td><td>${r.عرض}</td>
+        <td>${r.وزن.toLocaleString()}</td><td>${r.ys}</td><td>${r.uts}</td><td><b>${r.el}</b></td><td>${r.گرید}</td><td>${r.برند}</td>
+      </tr>`;
+    });
+
+    // ساخت پیجینیشن با فلش
+    pagination.innerHTML = '';
+    const ul = document.createElement('ul');
+    ul.className = 'pagination';
+
+    // قبلی
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="قبلی"><span aria-hidden="true">&laquo;</span></a>`;
+    prevLi.onclick = (e) => { e.preventDefault(); if (page > 1) renderPage(page - 1); };
+    ul.appendChild(prevLi);
+
+    // اعداد صفحه (فقط اطراف فعلی، مثلاً ۱ ... ۴ ۵ ۶ ... ۲۰)
+    const maxVisible = 5;
+    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    let endPage = Math.min(pages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) startPage = Math.max(1, endPage - maxVisible + 1);
+
+    if (startPage > 1) {
+      const firstLi = document.createElement('li');
+      firstLi.className = 'page-item';
+      firstLi.innerHTML = `<a class="page-link" href="#">1</a>`;
+      firstLi.onclick = (e) => { e.preventDefault(); renderPage(1); };
+      ul.appendChild(firstLi);
+      if (startPage > 2) {
+        const dots = document.createElement('li');
+        dots.className = 'page-item disabled';
+        dots.innerHTML = '<span class="page-link">...</span>';
+        ul.appendChild(dots);
+      }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${p === page ? 'active' : ''}`;
+      li.innerHTML = `<a class="page-link" href="#">${p}</a>`;
+      li.onclick = (e) => { e.preventDefault(); renderPage(p); };
+      ul.appendChild(li);
+    }
+
+    if (endPage < pages) {
+      if (endPage < pages - 1) {
+        const dots = document.createElement('li');
+        dots.className = 'page-item disabled';
+        dots.innerHTML = '<span class="page-link">...</span>';
+        ul.appendChild(dots);
+      }
+      const lastLi = document.createElement('li');
+      lastLi.className = 'page-item';
+      lastLi.innerHTML = `<a class="page-link" href="#">${pages}</a>`;
+      lastLi.onclick = (e) => { e.preventDefault(); renderPage(pages); };
+      ul.appendChild(lastLi);
+    }
+
+    // بعدی
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="بعدی"><span aria-hidden="true">&raquo;</span></a>`;
+    nextLi.onclick = (e) => { e.preventDefault(); if (page < pages) renderPage(page + 1); };
+    ul.appendChild(nextLi);
+
+    pagination.appendChild(ul);
+  };
+
+  if (data.length > 0) renderPage(1);
+}
+
+
+function renderPivotTable() {
+  if (rawData.length === 0) return;
+
+  const dataForPivot = rawData.map(r => ({
+    "تاریخ": r.تاریخ,
+    "سال": parseInt(r.سال) || '',
+    "ماه": parseInt(r.ماه) || '',
+    "روز": parseInt(r.روز) || '',
+    "شماره کویل": r.کویل,
+    "ضخامت": r.ضخامت,
+    "عرض": r.عرض,
+    "وزن (kg)": r.وزن,
+    "تناژ (تن)": +(r.وزن / 1000).toFixed(2),
+    "YS": r.ys,
+    "UTS": r.uts,
+    "EL (%)": r.el,
+    "گرید": r.گرید,
+    "نوع محصول": r.نوع,
+    "برند هات رول": r.برند
+  }));
+
+  $("#pivot-output").pivotUI(dataForPivot, {
+    renderers: $.extend({}, $.pivotUtilities.renderers, $.pivotUtilities.plotly_renderers),
+    rendererName: "جدول و نمودار",
+    rows: ["نوع محصول"],
+    cols: ["گرید"],
+    vals: ["تناژ (تن)"],
+    aggregatorName: "Sum",  // انگلیسی باشه (یا "Average" برای میانگین)
+    rendererOptions: {
+      plotly: { width: "100%", height: 600, responsive: true }
+    },
+    onRefresh: function(config) {
+      setTimeout(() => {
+        // RTL و فونت کامل
+        $("#pivot-output, #pivot-output table, #pivot-output .pvtRendererArea, #pivot-output .pvtUi").css({
+          direction: "rtl",
+          textAlign: "right",
+          fontFamily: "'Vazirmatn', sans-serif"
+        });
+        // فارسی کردن عنوان‌ها با CSS (حتی بدون فایل fa)
+        $(".pvtAxisLabel:contains('Rows')").text("ردیف‌ها:");
+        $(".pvtAxisLabel:contains('Columns')").text("ستون‌ها:");
+        $(".pvtAxisLabel:contains('Values')").text("مقادیر:");
+        $(".pvtAxisLabel:contains('Unused')").text("فیلترها و فیلدهای استفاده‌نشده:");
+        $(".pvtRenderer").css("direction", "rtl");
+      }, 200);
+    }
+  });
+}
+
+</script>
+</body>
+</html>

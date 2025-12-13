@@ -199,6 +199,92 @@
     margin-top: 20px;
   }
 }
+/* اضافه کردن به <style> موجود */
+
+/* دکمه toggle برای مخفی/نمایش تنظیمات Pivot */
+#pivot-toggle-btn {
+  position: fixed;
+  top: 120px;
+  left: 20px; /* چون RTL هست، سمت چپ صفحه */
+  z-index: 1000;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 20px;
+  box-shadow: 0 6px 20px rgba(79,70,229,0.4);
+  font-weight: bold;
+  display: none; /* ابتدا مخفی */
+}
+
+#pivot-toggle-btn:hover {
+  transform: scale(1.05);
+}
+
+/* مخفی کردن بخش تنظیمات وقتی نمودار نمایش داده می‌شه */
+.pivot-settings-hidden .pvtUi .pvtAxisContainer,
+.pivot-settings-hidden .pvtUi .pvtVals,
+.pivot-settings-hidden .pvtUi .pvtUnused {
+  display: none !important;
+}
+
+.pivot-settings-hidden .pvtUi .pvtRendererArea {
+  width: 100% !important;
+  margin-left: 0 !important;
+}
+
+/* وقتی تنظیمات مخفی باشه، خروجی تمام عرض رو بگیره */
+.pivot-settings-hidden #pivot-output .plotly-graph-div {
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* بهبود چیدمان تگ‌های فیلد در بخش‌های Rows, Cols, Vals, Filters */
+#pivot-output .pvtAxisContainer {
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: wrap;              /* این خط مهمه: اجازه می‌ده تگ‌ها به سطر بعدی برن */
+  justify-content: flex-start;    /* چون RTL هست، از راست شروع بشه */
+  align-items: flex-start;
+  gap: 8px;                     /* فاصله منظم بین تگ‌ها */
+  padding: 12px !important;
+  min-height: 60px;             /* حداقل ارتفاع برای زیبایی */
+  max-height: 220px;            /* حداکثر ۳ ردیف تقریبی — اگر بیشتر شد اسکرول عمودی کوچک */
+  overflow-y: auto;             /* فقط اگر واقعاً زیاد شد، اسکرول عمودی */
+  overflow-x: hidden;           /* اسکرول افقی رو کامل حذف کن */
+}
+
+/* هر تگ فیلد (مثل گرید، نوع محصول و ...) */
+#pivot-output .pvtAxisContainer .pvtAttr {
+  flex: 0 0 auto;               /* اندازه ثابت بگیره، نه کش بیاد */
+  min-width: 120px;             /* حداقل عرض برای خوانایی */
+  margin: 4px 0 !important;     /* فاصله عمودی */
+}
+
+/* بخش Unused (فیلدهای در دسترس) هم بهتره wrap بشه */
+#pivot-output .pvtUnused {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 12px !important;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#pivot-output .pvtUnused .pvtAttr {
+  min-width: 140px;
+  margin: 4px 0 !important;
+}
+
+/* کمی فاصله بیشتر بین بخش‌ها */
+#pivot-output .pvtUi td {
+  vertical-align: top !important;
+  padding: 8px !important;
+ 
+}
+
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -640,7 +726,6 @@ function setupPagination(data, idx) {
   if (data.length > 0) renderPage(1);
 }
 
-
 function renderPivotTable() {
   if (rawData.length === 0) return;
 
@@ -666,27 +751,51 @@ function renderPivotTable() {
     renderers: $.extend({}, $.pivotUtilities.renderers, $.pivotUtilities.plotly_renderers),
     rendererName: "جدول و نمودار",
     rows: ["نوع محصول"],
-    cols: ["گرید"],
+    cols: ["برند هات رول"],
     vals: ["تناژ (تن)"],
-    aggregatorName: "Sum",  // انگلیسی باشه (یا "Average" برای میانگین)
+    aggregatorName: "Sum",
     rendererOptions: {
-      plotly: { width: "100%", height: 600, responsive: true }
+      plotly: { width: "100%", height: 700, responsive: true }
     },
     onRefresh: function(config) {
       setTimeout(() => {
-        // RTL و فونت کامل
+        // RTL و فونت
         $("#pivot-output, #pivot-output table, #pivot-output .pvtRendererArea, #pivot-output .pvtUi").css({
           direction: "rtl",
           textAlign: "right",
           fontFamily: "'Vazirmatn', sans-serif"
         });
-        // فارسی کردن عنوان‌ها با CSS (حتی بدون فایل fa)
-        $(".pvtAxisLabel:contains('Rows')").text("ردیف‌ها:");
-        $(".pvtAxisLabel:contains('Columns')").text("ستون‌ها:");
-        $(".pvtAxisLabel:contains('Values')").text("مقادیر:");
-        $(".pvtAxisLabel:contains('Unused')").text("فیلترها و فیلدهای استفاده‌نشده:");
-        $(".pvtRenderer").css("direction", "rtl");
-      }, 200);
+
+        // ایجاد دکمه toggle اگر وجود نداشته باشد
+        if ($('#pivot-toggle-btn').length === 0) {
+          $('body').append(`
+            <button id="pivot-toggle-btn">
+              <i class="bi bi-gear-fill me-2"></i>نمایش تنظیمات
+            </button>
+          `);
+        }
+
+        const $container = $("#pivot-output");
+        const $btn = $('#pivot-toggle-btn');
+        const isChart = config.rendererName && !config.rendererName.includes("Table");
+
+        if (isChart) {
+          // وقتی نمودار است → تنظیمات رو مخفی کن، دکمه رو نشون بده
+          $container.addClass('pivot-settings-hidden');
+          $btn.show().text('نمایش تنظیمات');
+        } else {
+          // وقتی جدول است → همه چیز عادی
+          $container.removeClass('pivot-settings-hidden');
+          $btn.hide();
+        }
+
+        // کلیک روی دکمه → تنظیمات رو نشون بده (موقتاً)
+        $btn.off('click').on('click', function() {
+          $container.removeClass('pivot-settings-hidden');
+          $(this).hide();
+        });
+
+      }, 300);
     }
   });
 }

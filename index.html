@@ -4,11 +4,24 @@
 <meta charset="UTF-8">
 <title>داشبورد آزمایشگاه - آنالیز تعاملی</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- نسخه‌های PNG برای کیفیت بهتر و پشتیبانی گسترده‌تر (توصیه می‌شه) -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
 
 <!-- Bootstrap 5 -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+<!-- jQuery (اولین) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 
 <!-- Chart.js (برای تب‌های اصلی) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
@@ -18,8 +31,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
-<!-- jQuery (اولین) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
 <!-- jQuery UI (برای PivotTable.js drag & drop) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/base/jquery-ui.min.css">
@@ -285,6 +296,14 @@
  
 }
 
+.table.dataTable thead th{
+  text-align: center !important;
+}
+#dataTable0_filter .form-control{
+  background: #0d6efd !important;
+  color: white !important;
+}
+
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -299,8 +318,13 @@
     </div>
   </div>
 
+
+  
+  <h4 class="mb-4" style="text-align: center;">پس از بارگزاری فایل اکسل می توانید با فیلتر هوشمند در جدول، اطلاعات مربوطه را در نمودار مشاهده بفرمایید</h4>
   <ul class="nav nav-tabs justify-content-center mb-5 fs-5" id="tabs"></ul>
-  <div class="tab-content" id="tabContent"></div>
+  <div class="tab-content" id="tabContent">
+   
+  </div>
 </div>
 
 <script>
@@ -418,96 +442,195 @@ function buildDashboard() {
 // تمام توابع چارت‌های اصلی (createMainTabCharts, renderTabContent, setupPagination) رو از کد اولیه‌ت کپی کن
 // اینجا کامل گذاشتم (کپی از کد اصلی‌ت)
 
-// تب‌های اصلی (دست‌نخورده)
 function renderTabContent(data, idx, totalTon) {
+  const typeName = ['روغنی', 'گالوانیزه', 'گالوالوم'][idx] || 'محصول';
+
+  // رندر HTML تب
   document.getElementById(`content-${idx}`).innerHTML = `
-    <div class="row g-4">
-      <!-- 1. میانگین خواص مکانیکی -->
+    <div class="row g-4 mb-4">
+      <!-- ۶ نمودار بالا -->
       <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="text-center mb-4 fw-bold">میانگین خواص مکانیکی</h5>
-            <div class="chart-container"><canvas id="avg${idx}"></canvas></div>
-          </div>
-        </div>
+        <div class="card h-100"><div class="card-body">
+          <h5 class="text-center mb-4 fw-bold">میانگین خواص مکانیکی</h5>
+          <div class="chart-container"><canvas id="avg${idx}"></canvas></div>
+        </div></div>
       </div>
-
-      <!-- 2. توزیع گریدها -->
       <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="text-center mb-4 fw-bold">توزیع گریدها</h5>
-            <div class="chart-container"><canvas id="grades${idx}"></canvas></div>
-          </div>
-        </div>
+        <div class="card h-100"><div class="card-body">
+          <h5 class="text-center mb-4 fw-bold">توزیع گریدها (تناژ)</h5>
+          <div class="chart-container"><canvas id="grades${idx}"></canvas></div>
+        </div></div>
       </div>
-
-      <!-- 3. YS در مقابل UTS -->
       <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="text-center mb-4 fw-bold">YS در مقابل UTS</h5>
-            <div class="chart-container"><canvas id="scatter${idx}"></canvas></div>
-          </div>
-        </div>
+        <div class="card h-100"><div class="card-body">
+          <h5 class="text-center mb-4 fw-bold">YS در مقابل UTS</h5>
+          <div class="chart-container"><canvas id="scatter${idx}"></canvas></div>
+        </div></div>
       </div>
-
-      <!-- 4. هیستوگرام YS -->
       <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="text-center mb-4 fw-bold">توزیع YS</h5>
-            <div class="chart-container"><canvas id="histYS${idx}"></canvas></div>
-          </div>
-        </div>
+        <div class="card h-100"><div class="card-body">
+          <h5 class="text-center mb-4 fw-bold">توزیع YS</h5>
+          <div class="chart-container"><canvas id="histYS${idx}"></canvas></div>
+        </div></div>
       </div>
-
-      <!-- 5. هیستوگرام UTS -->
       <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="text-center mb-4 fw-bold">توزیع UTS</h5>
-            <div class="chart-container"><canvas id="histUTS${idx}"></canvas></div>
-          </div>
-        </div>
+        <div class="card h-100"><div class="card-body">
+          <h5 class="text-center mb-4 fw-bold">توزیع UTS</h5>
+          <div class="chart-container"><canvas id="histUTS${idx}"></canvas></div>
+        </div></div>
       </div>
-
-      <!-- 6. هیستوگرام EL -->
       <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="text-center mb-4 fw-bold">توزیع EL (%)</h5>
-            <div class="chart-container"><canvas id="histEL${idx}"></canvas></div>
-          </div>
-        </div>
+        <div class="card h-100"><div class="card-body">
+          <h5 class="text-center mb-4 fw-bold">توزیع EL (%)</h5>
+          <div class="chart-container"><canvas id="histEL${idx}"></canvas></div>
+        </div></div>
       </div>
+    </div>
 
-      <!-- جدول جزئیات کویل‌ها (اختیاری — اگر نمی‌خوای هم حذفش کن) -->
-      <div class="col-12">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="text-center mb-4">جزئیات کویل‌ها (${data.length} رکورد) — ${totalTon} تن</h5>
-            <div class="table-responsive">
-              <table class="table table-sm table-hover text-center">
-                <thead class="table-dark">
-                  <tr><th>تاریخ</th><th>کویل</th><th>ضخامت</th><th>عرض</th><th>وزن</th><th>YS</th><th>UTS</th><th>EL</th><th>گرید</th><th>برند</th></tr>
-                </thead>
-                <tbody id="tbody${idx}"></tbody>
-              </table>
-            </div>
-            <nav><ul class="pagination justify-content-center mt-3" id="pagination${idx}"></ul></nav>
-          </div>
+    <!-- جدول پایین با DataTables -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="text-center mb-4">
+          جزئیات کویل‌های ${typeName} 
+          <span class="badge bg-primary ms-2" id="recordCount${idx}">${data.length}</span> کویل • 
+          <span class="fw-bold text-primary" id="tonnage${idx}">${totalTon}</span> تن
+        </h5>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover text-center" id="dataTable${idx}" style="width:100%">
+            <thead class="table-dark">
+              <tr>
+                <th>تاریخ</th><th>کویل</th><th>ضخامت</th><th>عرض</th><th>وزن (kg)</th>
+                <th>YS</th><th>UTS</th><th>EL</th><th>گرید</th><th>برند</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>`;
 
-  // ساخت چارت‌ها بعد از رندر DOM
-  setTimeout(() => {
-    createMainTabCharts(data, idx);
-    setupPagination(data, idx);
-  }, 200);
-}
+  // ساخت اولیه نمودارها با داده کامل
+  setTimeout(() => createMainTabCharts(data, idx), 100);
 
+  // راه‌اندازی DataTable
+  const table = $(`#dataTable${idx}`).DataTable({
+    data: data.map(r => [
+      r.تاریخ,
+      r.کویل,
+      r.ضخامت,
+      r.عرض,
+      r.وزن.toLocaleString('fa-IR'),
+      r.ys,
+      r.uts,
+      `<b>${r.el}</b>`,
+      r.گرید,
+      r.برند
+    ]),
+    responsive: true,
+    pageLength: 15,
+    lengthMenu: [10, 15, 25, 50, 100],
+    order: [[0, 'desc']],
+    language: {
+      search: "جستجوی هوشمند:",
+      lengthMenu: "نمایش _MENU_ رکورد",
+      info: "نمایش _START_ تا _END_ از _TOTAL_ رکورد",
+      infoFiltered: "(فیلتر شده از _MAX_ رکورد)",
+      paginate: { previous: "قبلی", next: "بعدی" },
+      emptyTable: "داده‌ای موجود نیست",
+      zeroRecords: "رکوردی یافت نشد"
+    }
+  });
+
+  // Debounce برای آپدیت نمودارها — جلوگیری از کندی
+  let updateTimeout;
+  table.on('draw', function () {
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(() => {
+      // گرفتن ایندکس‌های ردیف‌های可见 (فیلتر شده)
+      const indexes = table.rows({ search: 'applied' }).indexes().toArray();
+      const visibleData = indexes.map(i => data[i]);
+
+      // آپدیت تعداد و تناژ
+      const count = visibleData.length;
+      const ton = count > 0 ? (visibleData.reduce((sum, r) => sum + r.وزن, 0) / 1000).toFixed(1) : '0';
+      $(`#recordCount${idx}`).text(count);
+      $(`#tonnage${idx}`).text(ton);
+
+      // آپدیت نمودارها
+      updateChartsForTab(visibleData, idx);
+    }, 350); // ۳۵۰ms تأخیر — خیلی روان می‌شه
+  });
+}
+// تابع جدید: آپدیت تمام نمودارها با داده دلخواه
+function updateChartsForTab(data, idx) {
+  if (data.length === 0) {
+    // اگر داده خالی بود، نمودارها رو خالی کن
+    ['avg', 'grades', 'scatter', 'histYS', 'histUTS', 'histEL'].forEach(prefix => {
+      const chart = Chart.getChart(`${prefix}${idx}`);
+      if (chart) chart.data.datasets.forEach(ds => ds.data = []);
+      if (chart) chart.update();
+    });
+    return;
+  }
+
+  // اینجا همون کدهای createMainTabCharts رو کپی می‌کنیم اما بدون ساخت جدید، فقط آپدیت
+  const avg = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+
+  // میانگین خواص
+  const avgChart = Chart.getChart(`avg${idx}`);
+  if (avgChart) {
+    avgChart.data.datasets[0].data = [avg(data.map(r=>r.ys)), avg(data.map(r=>r.uts)), avg(data.map(r=>r.el))];
+    avgChart.update();
+  }
+
+  // توزیع گریدها
+  const grades = {};
+  data.forEach(r => {
+    const ton = r.وزن / 1000;
+    grades[r.گرید] = (grades[r.گرید] || 0) + ton;
+  });
+  const sortedGrades = Object.entries(grades).sort((a,b) => b[1] - a[1]).map(([g,t]) => ({grade: g, ton: +t.toFixed(2)}));
+
+  const gradesChart = Chart.getChart(`grades${idx}`);
+  if (gradesChart) {
+    gradesChart.data.labels = sortedGrades.map(x => x.grade);
+    gradesChart.data.datasets[0].data = sortedGrades.map(x => x.ton);
+    gradesChart.update();
+  }
+
+  // scatter
+  const scatterData = data.map(r => {
+    const cat = getPointCategory(r);
+    return { x: r.ys, y: r.uts, backgroundColor: cat.color + 'dd', borderColor: cat.color };
+  });
+  const scatterChart = Chart.getChart(`scatter${idx}`);
+  if (scatterChart) {
+    scatterChart.data.datasets[0].data = scatterData.map(p => ({x: p.x, y: p.y}));
+    scatterChart.data.datasets[0].pointBackgroundColor = scatterData.map(p => p.backgroundColor);
+    scatterChart.data.datasets[0].pointBorderColor = scatterData.map(p => p.borderColor);
+    scatterChart.update();
+  }
+
+  // هیستوگرام‌ها
+  const makeHistUpdate = (prop, bins, canvasId) => {
+    const h = new Array(bins.length-1).fill(0);
+    data.forEach(r => {
+      const val = r[prop];
+      for (let j = 0; j < bins.length-1; j++) {
+        if (val >= bins[j] && val < bins[j+1]) { h[j]++; break; }
+      }
+    });
+    const chart = Chart.getChart(canvasId);
+    if (chart) {
+      chart.data.datasets[0].data = h;
+      chart.update();
+    }
+  };
+
+  makeHistUpdate('ys',  [0,200,240,280,320,400], `histYS${idx}`);
+  makeHistUpdate('uts', [250,320,380,440,500,600], `histUTS${idx}`);
+  makeHistUpdate('el',  [0,15,20,25,30,40],       `histEL${idx}`);
+}
 
 
 function createMainTabCharts(data, i) {

@@ -907,8 +907,8 @@ function renderPivotTable() {
 
         if (isChart) {
           // وقتی نمودار است → تنظیمات رو مخفی کن، دکمه رو نشون بده
-          $container.addClass('pivot-settings-hidden');
-          $btn.show().text('نمایش تنظیمات');
+          $container.removeClass('pivot-settings-hidden');
+         
         } else {
           // وقتی جدول است → همه چیز عادی
           $container.removeClass('pivot-settings-hidden');
